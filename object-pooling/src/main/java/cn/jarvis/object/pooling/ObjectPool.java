@@ -10,4 +10,6 @@ public interface ObjectPool<T>
     T checkOut();
 
     void checkIn(T item);
+
+    T create();
 }
