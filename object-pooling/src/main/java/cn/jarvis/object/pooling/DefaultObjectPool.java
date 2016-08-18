@@ -4,8 +4,9 @@ import cn.jarvis.object.pooling.config.DefaultObjectPoolConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -15,9 +16,10 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
 {
 
     // --- 配置属性 -----------------------------------------------------------------------------------------------------
-    private int maxTotal = DefaultObjectPoolConfig.DEFAULT_MAX_TOTAL;
-    private boolean blockWhenResourceShortage = DefaultObjectPoolConfig.DEFAULT_BLOCK_WHEN_RESOURCE_SHORTAGE;
-    private boolean fair = DefaultObjectPoolConfig.DEFAULT_FAIR;
+    private final int maxTotal;
+    private final boolean blockWhenResourceShortage;
+    private final long waitMillis;
+    private final boolean fair;
 
     // --- 基本字段 -----------------------------------------------------------------------------------------------------
     private final ConcurrentHashMap<T, PooledObject<T>> managedObjects = new ConcurrentHashMap<T, PooledObject<T>>();
@@ -29,11 +31,14 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
     private final PooledObjectFactory<T> objectFactory;
 
     private final ReentrantLock checkLock;
+    private final Condition resourceShortage;
+
+    private volatile boolean disposing = false;
 
     // --- 构造方法 -----------------------------------------------------------------------------------------------------
     public DefaultObjectPool(PooledObjectFactory<T> objectFactory)
     {
-        this(objectFactory, null);
+        this(objectFactory, new DefaultObjectPoolConfig());
     }
 
     public DefaultObjectPool(PooledObjectFactory<T> objectFactory, DefaultObjectPoolConfig config)
@@ -43,35 +48,65 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
             throw new IllegalArgumentException("object factory can not be null.");
         }
 
+        // 初始化属性配置
+        this.maxTotal = config.getMaxTotal();
+        this.blockWhenResourceShortage = config.isBlockWhenResourceShortage();
+        this.waitMillis = config.getWaitMillis();
+        this.fair = config.isFair();
+
+        // 初始化对象工厂
         this.objectFactory = objectFactory;
 
-        if (config != null)
-        {
-            loadConfig(config);
-        }
+        // 初始化资源紧缺锁
+        checkLock = new ReentrantLock(fair);
+        resourceShortage = checkLock.newCondition();
     }
 
     // --- 接口方法 -----------------------------------------------------------------------------------------------------
-    public T checkOut()
+    public T checkOut() throws Exception
     {
         PooledObject<T> item = null;
 
-        while (item == null)
+        while (item == null && !disposing)
         {
-            if (blockWhenResourceShortage)
+            item = idleObjects.poll();
+            if (item == null)
             {
-                item = idleObjects.poll();
+                item = createInternal();
                 if (item == null)
                 {
-                    item = createInternal();
-                    if (item == null)
+                    // 资源紧缺
+                    if (blockWhenResourceShortage)
                     {
-                        
+                        // 资源紧缺时加锁等待标志为真
+                        checkLock.lockInterruptibly();
+                        try
+                        {
+                            if (waitMillis < 0)
+                            {
+                                resourceShortage.await();
+                            }
+                            else
+                            {
+                                resourceShortage.await(waitMillis, TimeUnit.MILLISECONDS);
+                            }
+                            item = idleObjects.poll();
+                        }
+                        finally
+                        {
+                            checkLock.unlock();
+                        }
                     }
                 }
             }
+
+            if (item != null)
+            {
+                // 检查对象
+            }
         }
-        return null;
+
+        return item == null ? null : item.getPlainObject();
     }
 
     public void checkIn(T item)
@@ -109,12 +144,5 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
             return null;
         }
         return item;
-    }
-
-    public void loadConfig(DefaultObjectPoolConfig config)
-    {
-        this.maxTotal = config.getMaxTotal();
-        this.blockWhenResourceShortage = config.isBlockWhenResourceShortage();
-        this.fair = config.isFair();
     }
 }
