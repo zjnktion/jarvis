@@ -3,9 +3,9 @@ package cn.jarvis.object.pooling;
 import cn.jarvis.object.pooling.config.DefaultObjectPoolConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -15,25 +15,28 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
 {
 
     // --- 配置属性 -----------------------------------------------------------------------------------------------------
-    private int maxTotal = DefaultObjectPoolConfig.DEFAULT_MAX_TOTAL;
-    private boolean blockWhenResourceShortage = DefaultObjectPoolConfig.DEFAULT_BLOCK_WHEN_RESOURCE_SHORTAGE;
-    private boolean fair = DefaultObjectPoolConfig.DEFAULT_FAIR;
+    private int maxTotal;
+    private int maxIdle;
+    private boolean blockWhenResourceShortage;
+    private long maxBlockMillis;
+    private boolean fair;
 
     // --- 基本字段 -----------------------------------------------------------------------------------------------------
     private final ConcurrentHashMap<T, PooledObject<T>> managedObjects = new ConcurrentHashMap<T, PooledObject<T>>();
     private final AtomicLong managedCount = new AtomicLong(0L);
 
-    private final ConcurrentLinkedQueue<PooledObject<T>> idleObjects = new ConcurrentLinkedQueue<PooledObject<T>>();
+    private final LinkedBlockingDeque<PooledObject<T>> idleObjects;
     private final AtomicLong idleCount = new AtomicLong(0L);
 
     private final PooledObjectFactory<T> objectFactory;
 
-    private final ReentrantLock checkLock;
+    private final ReentrantLock lock;
+    private final Condition resourceShorage;
 
     // --- 构造方法 -----------------------------------------------------------------------------------------------------
     public DefaultObjectPool(PooledObjectFactory<T> objectFactory)
     {
-        this(objectFactory, null);
+        this(objectFactory, new DefaultObjectPoolConfig());
     }
 
     public DefaultObjectPool(PooledObjectFactory<T> objectFactory, DefaultObjectPoolConfig config)
@@ -43,33 +46,30 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
             throw new IllegalArgumentException("object factory can not be null.");
         }
 
+        // 设置配置属性
+        this.maxTotal = config.getMaxTotal();
+        this.maxIdle = config.getMaxIdle();
+        this.blockWhenResourceShortage = config.isBlockWhenResourceShortage();
+        this.maxBlockMillis = config.getMaxBlockMillis();
+        this.fair = config.isFair();
+
+        // 设置基本字段
+        this.idleObjects = new LinkedBlockingDeque<PooledObject<T>>(maxIdle);
         this.objectFactory = objectFactory;
 
-        if (config != null)
-        {
-            loadConfig(config);
-        }
+        // 设置资源紧缺锁
+        lock = new ReentrantLock(fair);
+        resourceShorage = lock.newCondition();
     }
 
     // --- 接口方法 -----------------------------------------------------------------------------------------------------
-    public T checkOut()
+    public T checkOut() throws Exception
     {
         PooledObject<T> item = null;
 
         while (item == null)
         {
-            if (blockWhenResourceShortage)
-            {
-                item = idleObjects.poll();
-                if (item == null)
-                {
-                    item = createInternal();
-                    if (item == null)
-                    {
-                        
-                    }
-                }
-            }
+
         }
         return null;
     }
@@ -109,12 +109,5 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
             return null;
         }
         return item;
-    }
-
-    public void loadConfig(DefaultObjectPoolConfig config)
-    {
-        this.maxTotal = config.getMaxTotal();
-        this.blockWhenResourceShortage = config.isBlockWhenResourceShortage();
-        this.fair = config.isFair();
     }
 }

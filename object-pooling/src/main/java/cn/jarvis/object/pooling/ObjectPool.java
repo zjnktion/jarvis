@@ -7,7 +7,7 @@ package cn.jarvis.object.pooling;
 public interface ObjectPool<T>
 {
 
-    T checkOut();
+    T checkOut() throws Exception;
 
     void checkIn(T item);
 
