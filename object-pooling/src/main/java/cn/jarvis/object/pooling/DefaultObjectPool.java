@@ -2,8 +2,8 @@ package cn.jarvis.object.pooling;
 
 import cn.jarvis.object.pooling.config.DefaultObjectPoolConfig;
 
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,13 +22,13 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
     private boolean fair;
 
     // --- 基本字段 -----------------------------------------------------------------------------------------------------
+    private final PooledObjectFactory<T> objectFactory;
+
     private final ConcurrentHashMap<T, PooledObject<T>> managedObjects = new ConcurrentHashMap<T, PooledObject<T>>();
     private final AtomicLong managedCount = new AtomicLong(0L);
 
-    private final LinkedBlockingDeque<PooledObject<T>> idleObjects;
+    private final PooledObject<T>[] idleObjects;
     private final AtomicLong idleCount = new AtomicLong(0L);
-
-    private final PooledObjectFactory<T> objectFactory;
 
     private final ReentrantLock lock;
     private final Condition resourceShorage;
@@ -39,6 +39,7 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
         this(objectFactory, new DefaultObjectPoolConfig());
     }
 
+    @SuppressWarnings("unchecked")
     public DefaultObjectPool(PooledObjectFactory<T> objectFactory, DefaultObjectPoolConfig config)
     {
         if (objectFactory == null)
@@ -54,8 +55,8 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
         this.fair = config.isFair();
 
         // 设置基本字段
-        this.idleObjects = new LinkedBlockingDeque<PooledObject<T>>(maxIdle);
         this.objectFactory = objectFactory;
+        this.idleObjects = (PooledObject<T>[]) new PooledObject[maxIdle];
 
         // 设置资源紧缺锁
         lock = new ReentrantLock(fair);
