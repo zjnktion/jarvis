@@ -182,6 +182,7 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
             throw new IllegalArgumentException("The object tried to check in not a part of this object pool.");
         }
 
+        // 设置对象偿还释放信息
         if (!item.idle())
         {
             throw new IllegalStateException("The object tried to check in not in a correct status.");
