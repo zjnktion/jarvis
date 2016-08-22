@@ -8,5 +8,7 @@ public enum PooledObjectStatus
 
     IDLE,
 
-    INUSED
+    INUSED,
+
+    INVALID
 }
