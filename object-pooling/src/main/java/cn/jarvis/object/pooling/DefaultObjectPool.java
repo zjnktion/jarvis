@@ -233,6 +233,7 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
         try
         {
             item = objectFactory.create();
+            managedObjects.put(item.originalObject(), item);
         }
         catch (Exception e)
         {
