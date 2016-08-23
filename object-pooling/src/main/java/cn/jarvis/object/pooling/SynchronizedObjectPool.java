@@ -1,23 +1,14 @@
 package cn.jarvis.object.pooling;
 
-import cn.jarvis.object.pooling.config.DefaultObjectPoolConfig;
+import cn.jarvis.object.pooling.config.SynchronizedObjectPoolConfig;
 
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 默认对象池
- * 建议在真正高并发性能要求高的时候再使用，并且最好把blockWhenResourceShortage设成false
- *
- * 推荐使用这个，综合性能好，稳定
- * @author zjnktion
+ * Created by zhengjn on 2016/8/23.
  */
-public class DefaultObjectPool<T> implements ObjectPool<T>
+public class SynchronizedObjectPool<T> implements ObjectPool<T>
 {
 
     // --- 配置属性 -----------------------------------------------------------------------------------------------------
@@ -26,26 +17,23 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
     private final long maxBlockMillis;
     private final boolean retryWhileCheckOutValidateFail;
     private final long maxIdleValidateMillis;
-    private final boolean fair;
 
     // --- 基本字段 -----------------------------------------------------------------------------------------------------
     private final PooledObjectFactory<T> objectFactory;
 
     private final ConcurrentHashMap<T, PooledObject<T>> managedObjects = new ConcurrentHashMap<T, PooledObject<T>>();
-    private final AtomicLong managedCount = new AtomicLong(0L);
+    private int managedCount = 0;
 
-    private final ConcurrentLinkedQueue<PooledObject<T>> idleObjects = new ConcurrentLinkedQueue<PooledObject<T>>();
-
-    private final ReentrantLock lock;
-    private final Condition resourceShorage;
+    private final PooledObject<T>[] idleObjects;
+    private int index = -1;
 
     // --- 构造方法 -----------------------------------------------------------------------------------------------------
-    public DefaultObjectPool(PooledObjectFactory<T> objectFactory)
+    public SynchronizedObjectPool(PooledObjectFactory<T> objectFactory)
     {
-        this(objectFactory, new DefaultObjectPoolConfig());
+        this(objectFactory, new SynchronizedObjectPoolConfig());
     }
 
-    public DefaultObjectPool(PooledObjectFactory<T> objectFactory, DefaultObjectPoolConfig config)
+    public SynchronizedObjectPool(PooledObjectFactory<T> objectFactory, SynchronizedObjectPoolConfig config)
     {
         if (objectFactory == null)
         {
@@ -58,76 +46,56 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
         this.maxBlockMillis = config.getMaxBlockMillis();
         this.retryWhileCheckOutValidateFail = config.isRetryWhileCheckOutValidateFail();
         this.maxIdleValidateMillis = config.getMaxIdleValidateMillis();
-        this.fair = config.isFair();
 
         // 设置基本字段
         this.objectFactory = objectFactory;
-
-        // 设置资源紧缺锁
-        lock = new ReentrantLock(fair);
-        resourceShorage = lock.newCondition();
+        this.idleObjects = new PooledObject[this.maxTotal];
     }
 
-    // --- 接口方法 -----------------------------------------------------------------------------------------------------
-    public T checkOut() throws Exception
+    // --- 实现接口 -----------------------------------------------------------------------------------------------------
+    public synchronized T checkOut() throws Exception
     {
         PooledObject<T> item = null;
 
-        while (item == null) // 对于取得了对象，但是没有通过校验的，给予再重试的机会
+        while (item == null)
         {
-            item = idleObjects.poll();
-            if (item == null)
+            if (this.index < 0)
             {
                 item = createInternal();
                 if (item == null)
                 {
                     // 资源紧缺
-                    if (blockWhenResourceShortage)
+                    if (this.blockWhenResourceShortage)
                     {
                         // 若设置了资源紧缺则等待直到取到或者超时(非精确超时)
-                        lock.lockInterruptibly();
-                        try
+                        if (this.maxBlockMillis <= 0)
                         {
-                            if (maxBlockMillis <= 0)
-                            {
-                                while ((item = idleObjects.poll()) == null)
-                                {
-                                    resourceShorage.await();
-                                }
-                            }
-                            else
-                            {
-                                long localWaitMillis = 0;
-                                while ((item = idleObjects.poll()) == null)
-                                {
-                                    long loopStartMillis = System.currentTimeMillis();
-                                    if (localWaitMillis < this.maxBlockMillis)
-                                    {
-                                        resourceShorage.await(this.maxBlockMillis, TimeUnit.MILLISECONDS);
-                                        localWaitMillis += System.currentTimeMillis() - loopStartMillis;
-                                    }
-                                    else
-                                    {
-                                        throw new NoSuchElementException("Resource shortage after wait.");
-                                    }
-                                }
-                            }
+                            this.wait();
                         }
-                        finally
+                        else
                         {
-                            lock.unlock();
+                            this.wait(this.maxBlockMillis);
+                        }
+                        if (this.index < 0)
+                        {
+                            throw new NoSuchElementException("Resource shortage after wait.");
+                        }
+                        else
+                        {
+                            item = idleObjects[this.index];
+                            idleObjects[this.index--] = null;
                         }
                     }
                     else
                     {
-                        // 若没有设置资源紧缺等待，则给予最后一次尝试机会
-                        item = idleObjects.poll();
-                        if (item == null)
-                        {
-                            throw new NoSuchElementException("Resource shortage without wait.");
-                        }
+                        throw new NoSuchElementException("Resource shortage without wait.");
                     }
                 }
+            }
+            else
+            {
+                item = idleObjects[this.index];
+                idleObjects[this.index--] = null;
             }
 
             if (needValidateBeforeCheckOut(item))
@@ -181,7 +149,7 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
         return item.originalObject();
     }
 
-    public void checkIn(T obj) throws Exception
+    public synchronized void checkIn(T obj) throws Exception
     {
         PooledObject<T> item = managedObjects.get(obj);
 
@@ -199,44 +167,30 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
             }
         }
 
-        idleObjects.offer(item);
+        int oldIndex = this.index;
+        this.idleObjects[++this.index] = item;
 
-        tryToSignal();
-    }
-
-    public void create() throws Exception
-    {
-        PooledObject<T> item = createInternal();
-
-        if (item == null)
+        if (oldIndex < 0)
         {
-            throw new NoSuchElementException("This object pool has managed objects reach to max total.");
+            this.notify();
         }
-
-        idleObjects.offer(item);
-
-        tryToSignal();
     }
 
-    public void destroy(T obj) throws Exception
+    public synchronized void create() throws Exception
     {
-        PooledObject<T> item = managedObjects.get(obj);
 
-        if (item == null)
-        {
-            throw new IllegalArgumentException("The object tried to destroy not a part of this object pool.");
-        }
-
-        destroyInternal(item);
     }
 
-    // --- private 方法 -------------------------------------------------------------------------------------------------
+    public synchronized void destroy(T obj) throws Exception
+    {
+
+    }
+
+    // --- 私有方法 -----------------------------------------------------------------------------------------------------
     private PooledObject<T> createInternal()
     {
-        long afterCreateCount = managedCount.incrementAndGet();
-        if (afterCreateCount > maxTotal || afterCreateCount > Integer.MAX_VALUE)
+        if (this.managedCount == Integer.MAX_VALUE || this.managedCount == maxTotal)
         {
-            managedCount.decrementAndGet();
             return null;
         }
 
@@ -245,13 +199,13 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
         {
             item = objectFactory.create();
             managedObjects.put(item.originalObject(), item);
+            this.managedCount++;
+            return item;
         }
         catch (Exception e)
         {
-            managedCount.decrementAndGet();
             return null;
         }
-        return item;
     }
 
     private void destroyInternal(PooledObject<T> item) throws Exception
@@ -260,7 +214,24 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
         {
             item.invalidate();
         }
-        idleObjects.remove(item);
+
+        if (this.index >= 0)
+        {
+            for (int i = 0; i < this.index; i++)
+            {
+                if (this.idleObjects[i] == item)
+                {
+                    int moveNum = this.index - i;
+                    if (moveNum > 0)
+                    {
+                        System.arraycopy(this.idleObjects, i + 1, this.idleObjects, i, moveNum);
+                    }
+                    idleObjects[this.index--] = null;
+                    break;
+                }
+            }
+        }
+
         managedObjects.remove(item.originalObject());
         try
         {
@@ -268,7 +239,7 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
         }
         finally
         {
-            managedCount.decrementAndGet();
+            this.managedCount--;
         }
     }
 
@@ -276,21 +247,4 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
     {
         return this.maxIdleValidateMillis >= 0 && System.currentTimeMillis() - item.getLastCheckInMillis() >= this.maxIdleValidateMillis;
     }
-
-    private void tryToSignal() {
-        lock.lock();
-        try
-        {
-            if (lock.hasWaiters(resourceShorage))
-            {
-                // 当资源紧缺锁的资源紧缺条件上有阻塞的线程的时候再唤醒
-                resourceShorage.signal();
-            }
-        }
-        finally
-        {
-            lock.unlock();
-        }
-    }
-
 }

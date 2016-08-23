@@ -9,9 +9,9 @@ public class DefaultPooledObject<T> implements PooledObject<T>
     private T obj;
 
     private final long createTimeMillis = System.currentTimeMillis();
-    private volatile long lastCheckOutMillis = createTimeMillis;
-    private volatile long lastCheckInMillis = createTimeMillis;
-    private volatile PooledObjectStatus currentStatus = PooledObjectStatus.IDLE;
+    private long lastCheckOutMillis = createTimeMillis;
+    private long lastCheckInMillis = createTimeMillis;
+    private PooledObjectStatus currentStatus = PooledObjectStatus.IDLE;
 
     public DefaultPooledObject(T obj)
     {
@@ -23,7 +23,7 @@ public class DefaultPooledObject<T> implements PooledObject<T>
         return this.obj;
     }
 
-    public synchronized boolean inuse()
+    public boolean inuse()
     {
         if (this.currentStatus == PooledObjectStatus.INUSED || this.currentStatus == PooledObjectStatus.INVALID)
         {
@@ -35,7 +35,7 @@ public class DefaultPooledObject<T> implements PooledObject<T>
         return true;
     }
 
-    public synchronized boolean idle()
+    public boolean idle()
     {
         if (this.currentStatus == PooledObjectStatus.IDLE || this.currentStatus == PooledObjectStatus.INVALID)
         {
@@ -47,7 +47,7 @@ public class DefaultPooledObject<T> implements PooledObject<T>
         return true;
     }
 
-    public synchronized void invalidate()
+    public void invalidate()
     {
         this.currentStatus = PooledObjectStatus.INVALID;
     }
