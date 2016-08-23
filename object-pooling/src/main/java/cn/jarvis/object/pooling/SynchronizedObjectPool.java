@@ -135,13 +135,10 @@ public class SynchronizedObjectPool<T> implements ObjectPool<T>
             // 设置对象借出使用信息
             if (item != null)
             {
-                synchronized (item)
+                if (!item.inuse())
                 {
-                    if (!item.inuse())
-                    {
-                        // 正常来说，不会出现这种情况，但是为了避免不可控自己菜的原因或许会导致的并发bug而加上的一段
-                        item = null;
-                    }
+                    // 正常来说，不会出现这种情况，但是为了避免不可控自己菜的原因或许会导致的并发bug而加上的一段
+                    item = null;
                 }
             }
         }
@@ -159,12 +156,9 @@ public class SynchronizedObjectPool<T> implements ObjectPool<T>
         }
 
         // 设置对象偿还释放信息
-        synchronized (item)
+        if (!item.idle())
         {
-            if (!item.idle())
-            {
-                throw new IllegalStateException("The object tried to check in not in a correct status.");
-            }
+            throw new IllegalStateException("The object tried to check in not in a correct status.");
         }
 
         int oldIndex = this.index;
@@ -210,10 +204,7 @@ public class SynchronizedObjectPool<T> implements ObjectPool<T>
 
     private void destroyInternal(PooledObject<T> item) throws Exception
     {
-        synchronized (item)
-        {
-            item.invalidate();
-        }
+        item.invalidate();
 
         if (this.index >= 0)
         {

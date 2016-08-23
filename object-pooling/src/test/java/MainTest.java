@@ -11,12 +11,14 @@ public class MainTest
     public static final ObjectPool<TestObject> pool1 = new SynchronizedObjectPool<TestObject>(new TestFactory());
 
     static long time;
+
     public static void main(String[] args)
     {
         TestThread tt = new TestThread();
 
-        Thread[] ts = new Thread[16];
-        for (int i = 0; i < 16; i++)
+        int num = 9;
+        Thread[] ts = new Thread[num];
+        for (int i = 0; i < num; i++)
         {
             ts[i] = new Thread(tt);
         }
@@ -26,9 +28,8 @@ public class MainTest
             t.start();
         }
 
-
     }
-static final MainTest MT = new MainTest();
+
     static class TestThread implements Runnable
     {
 
@@ -38,13 +39,13 @@ static final MainTest MT = new MainTest();
             {
                 try
                 {
-                    pool.checkIn(pool.checkOut());
+//                    pool.checkIn(pool.checkOut());
 
-//                    pool1.checkIn(pool1.checkOut());
+                    pool1.checkIn(pool1.checkOut());
                 }
                 catch (Exception e)
                 {
-                    //e.printStackTrace();
+                    e.printStackTrace();
                 }
             }
             long t = System.currentTimeMillis() - time;
