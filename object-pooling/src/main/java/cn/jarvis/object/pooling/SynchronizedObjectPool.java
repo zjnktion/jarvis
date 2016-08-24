@@ -6,7 +6,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Created by zhengjn on 2016/8/23.
+ * @author zjnktion
  */
 public class SynchronizedObjectPool<T> implements ObjectPool<T>
 {
@@ -70,21 +70,30 @@ public class SynchronizedObjectPool<T> implements ObjectPool<T>
                         // 若设置了资源紧缺则等待直到取到或者超时(非精确超时)
                         if (this.maxBlockMillis <= 0)
                         {
-                            this.wait();
+                            while (this.index < 0)
+                            {
+                                this.wait();
+                            }
                         }
                         else
                         {
-                            this.wait(this.maxBlockMillis);
+                            long localWaitMillis = 0L;
+                            while (this.index < 0)
+                            {
+                                long loopStartMillis = System.currentTimeMillis();
+                                if (localWaitMillis < this.maxBlockMillis)
+                                {
+                                    this.wait(this.maxBlockMillis - localWaitMillis);
+                                    localWaitMillis += System.currentTimeMillis() - loopStartMillis;
+                                }
+                                else
+                                {
+                                    throw new NoSuchElementException("Resource shortage after wait.");
+                                }
+                            }
                         }
-                        if (this.index < 0)
-                        {
-                            throw new NoSuchElementException("Resource shortage after wait.");
-                        }
-                        else
-                        {
-                            item = idleObjects[this.index];
-                            idleObjects[this.index--] = null;
-                        }
+                        item = idleObjects[this.index];
+                        idleObjects[this.index--] = null;
                     }
                     else
                     {

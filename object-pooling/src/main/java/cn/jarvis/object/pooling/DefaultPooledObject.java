@@ -1,7 +1,7 @@
 package cn.jarvis.object.pooling;
 
 /**
- * Created by zhengjn on 2016/8/22.
+ * @author zjnktion
  */
 public class DefaultPooledObject<T> implements PooledObject<T>
 {

@@ -1,7 +1,7 @@
 package cn.jarvis.object.pooling;
 
 /**
- * Created by zhengjn on 2016/8/18.
+ * @author zjnktion
  */
 public interface PooledObjectFactory<T>
 {

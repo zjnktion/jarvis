@@ -1,4 +1,5 @@
 import cn.jarvis.object.pooling.DefaultObjectPool;
+import cn.jarvis.object.pooling.LockObjectPool;
 import cn.jarvis.object.pooling.ObjectPool;
 import cn.jarvis.object.pooling.SynchronizedObjectPool;
 
@@ -9,6 +10,7 @@ public class MainTest
 {
     public static final ObjectPool<TestObject> pool = new DefaultObjectPool<TestObject>(new TestFactory());
     public static final ObjectPool<TestObject> pool1 = new SynchronizedObjectPool<TestObject>(new TestFactory());
+    public static final ObjectPool<TestObject> pool2 = new LockObjectPool<TestObject>(new TestFactory());
 
     static long time;
 
@@ -16,7 +18,7 @@ public class MainTest
     {
         TestThread tt = new TestThread();
 
-        int num = 9;
+        int num = 500;
         Thread[] ts = new Thread[num];
         for (int i = 0; i < num; i++)
         {
@@ -42,6 +44,8 @@ public class MainTest
 //                    pool.checkIn(pool.checkOut());
 
                     pool1.checkIn(pool1.checkOut());
+
+//                    pool2.checkIn(pool2.checkOut());
                 }
                 catch (Exception e)
                 {

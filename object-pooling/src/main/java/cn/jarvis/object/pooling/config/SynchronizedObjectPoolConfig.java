@@ -1,7 +1,7 @@
 package cn.jarvis.object.pooling.config;
 
 /**
- * Created by zhengjn on 2016/8/23.
+ * @author zjnktion
  */
 public class SynchronizedObjectPoolConfig
 {

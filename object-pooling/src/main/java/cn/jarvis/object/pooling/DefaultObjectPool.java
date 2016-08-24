@@ -103,7 +103,7 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
                                     long loopStartMillis = System.currentTimeMillis();
                                     if (localWaitMillis < this.maxBlockMillis)
                                     {
-                                        resourceShorage.await(this.maxBlockMillis, TimeUnit.MILLISECONDS);
+                                        resourceShorage.await(this.maxBlockMillis - localWaitMillis, TimeUnit.MILLISECONDS);
                                         localWaitMillis += System.currentTimeMillis() - loopStartMillis;
                                     }
                                     else
