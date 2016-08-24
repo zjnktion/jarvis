@@ -1,7 +1,4 @@
-import cn.jarvis.object.pooling.DefaultObjectPool;
-import cn.jarvis.object.pooling.LockObjectPool;
-import cn.jarvis.object.pooling.ObjectPool;
-import cn.jarvis.object.pooling.SynchronizedObjectPool;
+import cn.jarvis.object.pooling.*;
 
 /**
  * Created by zhengjn on 2016/8/23.
@@ -18,7 +15,7 @@ public class MainTest
     {
         TestThread tt = new TestThread();
 
-        int num = 500;
+        int num = 50;
         Thread[] ts = new Thread[num];
         for (int i = 0; i < num; i++)
         {
@@ -37,11 +34,15 @@ public class MainTest
 
         public void run()
         {
+            TestObject obj;
             for (int i = 0; i < 1000000; i++)
             {
                 try
                 {
 //                    pool.checkIn(pool.checkOut());
+
+//                    obj = pool1.checkOut();
+//                    pool1.checkIn(obj);
 
                     pool1.checkIn(pool1.checkOut());
 

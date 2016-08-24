@@ -195,7 +195,7 @@ public class LockObjectPool<T> implements ObjectPool<T>
 
             if (oldIndex < 0)
             {
-                resourceShortage.signal();
+                resourceShortage.signalAll();
             }
 
         }
