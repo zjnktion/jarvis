@@ -1,6 +1,6 @@
 package cn.jarvis.object.pooling;
 
-import cn.jarvis.object.pooling.config.SynchronizedObjectPoolConfig;
+import cn.jarvis.object.pooling.config.ReentrantLockObjectPoolConfig;
 
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,9 +9,12 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * 不建议高并发的时候使用
+ * 由于ReentranceLock要维护一个waiter队列，导致高并发时候，waiter的node gc过于频繁从而性能急剧下降
+ *
  * @author zjnktion
  */
-public class LockObjectPool<T> implements ObjectPool<T>
+public class ReentrantLockObjectPool<T> implements ObjectPool<T>
 {
 
     // --- 配置属性 -----------------------------------------------------------------------------------------------------
@@ -20,6 +23,7 @@ public class LockObjectPool<T> implements ObjectPool<T>
     private final long maxBlockMillis;
     private final boolean retryWhileCheckOutValidateFail;
     private final long maxIdleValidateMillis;
+    private boolean fair;
 
     // --- 基本字段 -----------------------------------------------------------------------------------------------------
     private final PooledObjectFactory<T> objectFactory;
@@ -34,12 +38,12 @@ public class LockObjectPool<T> implements ObjectPool<T>
     private final Condition resourceShortage;
 
     // --- 构造方法 -----------------------------------------------------------------------------------------------------
-    public LockObjectPool(PooledObjectFactory<T> objectFactory)
+    public ReentrantLockObjectPool(PooledObjectFactory<T> objectFactory)
     {
-        this(objectFactory, new SynchronizedObjectPoolConfig());
+        this(objectFactory, new ReentrantLockObjectPoolConfig());
     }
 
-    public LockObjectPool(PooledObjectFactory<T> objectFactory, SynchronizedObjectPoolConfig config)
+    public ReentrantLockObjectPool(PooledObjectFactory<T> objectFactory, ReentrantLockObjectPoolConfig config)
     {
         if (objectFactory == null)
         {
@@ -52,12 +56,13 @@ public class LockObjectPool<T> implements ObjectPool<T>
         this.maxBlockMillis = config.getMaxBlockMillis();
         this.retryWhileCheckOutValidateFail = config.isRetryWhileCheckOutValidateFail();
         this.maxIdleValidateMillis = config.getMaxIdleValidateMillis();
+        this.fair = config.isFair();
 
         // 设置基本字段
         this.objectFactory = objectFactory;
         this.idleObjects = new PooledObject[this.maxTotal];
 
-        lock = new ReentrantLock();
+        lock = new ReentrantLock(fair);
         resourceShortage = lock.newCondition();
     }
 
@@ -195,7 +200,7 @@ public class LockObjectPool<T> implements ObjectPool<T>
 
             if (oldIndex < 0)
             {
-                resourceShortage.signalAll();
+                resourceShortage.signal();
             }
 
         }

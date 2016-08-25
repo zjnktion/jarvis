@@ -5,9 +5,9 @@ import cn.jarvis.object.pooling.*;
  */
 public class MainTest
 {
-    public static final ObjectPool<TestObject> pool = new DefaultObjectPool<TestObject>(new TestFactory());
+    public static final ObjectPool<TestObject> pool = new ConcurrentQueueObjectPool<TestObject>(new TestFactory());
     public static final ObjectPool<TestObject> pool1 = new SynchronizedObjectPool<TestObject>(new TestFactory());
-    public static final ObjectPool<TestObject> pool2 = new LockObjectPool<TestObject>(new TestFactory());
+    public static final ObjectPool<TestObject> pool2 = new ReentrantLockObjectPool<TestObject>(new TestFactory());
 
     static long time;
 
@@ -15,7 +15,7 @@ public class MainTest
     {
         TestThread tt = new TestThread();
 
-        int num = 50;
+        int num = 1;
         Thread[] ts = new Thread[num];
         for (int i = 0; i < num; i++)
         {
@@ -34,19 +34,26 @@ public class MainTest
 
         public void run()
         {
-            TestObject obj;
-            for (int i = 0; i < 1000000; i++)
+            for (int i = 0; i < 1; i++)
             {
                 try
                 {
 //                    pool.checkIn(pool.checkOut());
 
-//                    obj = pool1.checkOut();
-//                    pool1.checkIn(obj);
-
-                    pool1.checkIn(pool1.checkOut());
+//                    pool1.checkIn(pool1.checkOut());
 
 //                    pool2.checkIn(pool2.checkOut());
+
+                    TestObject obj = pool1.checkOut();
+                    pool1.checkIn(obj);
+                    pool1.create();
+                    pool1.create();
+                    pool1.create();
+                    pool1.create();
+                    pool1.create();
+                    pool1.create();
+                    pool1.create();
+                    pool1.destroy(obj);
                 }
                 catch (Exception e)
                 {

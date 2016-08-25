@@ -6,6 +6,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * 目前为止，性能最好的实现
  * @author zjnktion
  */
 public class SynchronizedObjectPool<T> implements ObjectPool<T>
@@ -181,12 +182,32 @@ public class SynchronizedObjectPool<T> implements ObjectPool<T>
 
     public synchronized void create() throws Exception
     {
+        PooledObject<T> item = createInternal();
 
+        if (item == null)
+        {
+            throw new IllegalStateException("The object tried to check in not in a correct status.");
+        }
+
+        int oldIndex = this.index;
+        this.idleObjects[++this.index] = item;
+
+        if (oldIndex < 0)
+        {
+            this.notify();
+        }
     }
 
     public synchronized void destroy(T obj) throws Exception
     {
+        PooledObject<T> item = managedObjects.get(obj);
 
+        if (item == null)
+        {
+            throw new IllegalArgumentException("The object tried to destroy not a part of this object pool.");
+        }
+
+        destroyInternal(item);
     }
 
     // --- 私有方法 -----------------------------------------------------------------------------------------------------
@@ -217,7 +238,7 @@ public class SynchronizedObjectPool<T> implements ObjectPool<T>
 
         if (this.index >= 0)
         {
-            for (int i = 0; i < this.index; i++)
+            for (int i = 0; i <= this.index; i++)
             {
                 if (this.idleObjects[i] == item)
                 {

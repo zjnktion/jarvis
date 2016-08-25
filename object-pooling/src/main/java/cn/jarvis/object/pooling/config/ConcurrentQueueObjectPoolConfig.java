@@ -3,7 +3,7 @@ package cn.jarvis.object.pooling.config;
 /**
  * @author zjnktion
  */
-public class DefaultObjectPoolConfig
+public class ConcurrentQueueObjectPoolConfig
 {
 
     // --- 默认常量 -----------------------------------------------------------------------------------------------------

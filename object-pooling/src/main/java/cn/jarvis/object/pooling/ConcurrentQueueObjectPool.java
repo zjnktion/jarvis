@@ -1,6 +1,6 @@
 package cn.jarvis.object.pooling;
 
-import cn.jarvis.object.pooling.config.DefaultObjectPoolConfig;
+import cn.jarvis.object.pooling.config.ConcurrentQueueObjectPoolConfig;
 
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,13 +11,10 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 默认对象池
- * 建议在真正高并发性能要求高的时候再使用，并且最好把blockWhenResourceShortage设成false
- *
- * 推荐使用这个，综合性能好，稳定
+ * 性能一般，但稳定
  * @author zjnktion
  */
-public class DefaultObjectPool<T> implements ObjectPool<T>
+public class ConcurrentQueueObjectPool<T> implements ObjectPool<T>
 {
 
     // --- 配置属性 -----------------------------------------------------------------------------------------------------
@@ -40,12 +37,12 @@ public class DefaultObjectPool<T> implements ObjectPool<T>
     private final Condition resourceShorage;
 
     // --- 构造方法 -----------------------------------------------------------------------------------------------------
-    public DefaultObjectPool(PooledObjectFactory<T> objectFactory)
+    public ConcurrentQueueObjectPool(PooledObjectFactory<T> objectFactory)
     {
-        this(objectFactory, new DefaultObjectPoolConfig());
+        this(objectFactory, new ConcurrentQueueObjectPoolConfig());
     }
 
-    public DefaultObjectPool(PooledObjectFactory<T> objectFactory, DefaultObjectPoolConfig config)
+    public ConcurrentQueueObjectPool(PooledObjectFactory<T> objectFactory, ConcurrentQueueObjectPoolConfig config)
     {
         if (objectFactory == null)
         {
