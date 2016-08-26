@@ -8,7 +8,7 @@ public interface PooledObjectFactory<T>
 
     PooledObject<T> create() throws Exception;
 
-    boolean validate(PooledObject<T> item) throws Exception;
+    boolean validate(PooledObject<T> item);
 
-    void destory(PooledObject<T> item) throws Exception;
+    void destroy(PooledObject<T> item) throws Exception;
 }

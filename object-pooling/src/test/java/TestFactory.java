@@ -17,7 +17,7 @@ public class TestFactory implements PooledObjectFactory<TestObject>
         return true;
     }
 
-    public void destory(PooledObject<TestObject> item) throws Exception
+    public void destroy(PooledObject<TestObject> item) throws Exception
     {
 
     }

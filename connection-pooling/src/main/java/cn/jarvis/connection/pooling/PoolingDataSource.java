@@ -1,5 +1,7 @@
 package cn.jarvis.connection.pooling;
 
+import cn.jarvis.object.pooling.ObjectPool;
+
 import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -11,11 +13,23 @@ import java.util.logging.Logger;
  * 池化数据源
  * @author zjnktion
  */
-public class PoolingDataSource<C extends Connection> implements DataSource
+public class PoolingDataSource implements DataSource
 {
 
     // --- 基本字段 -----------------------------------------------------------------------------------------------------
     private PrintWriter printWriter = null;
+    private ObjectPool<Connection> connectionPool = null;
+
+    // --- 构造方法 -----------------------------------------------------------------------------------------------------
+    public PoolingDataSource(ObjectPool<Connection> connectionPool)
+    {
+        if (connectionPool == null)
+        {
+            throw new IllegalArgumentException("ObjectPool can not be null.");
+        }
+
+        this.connectionPool = connectionPool;
+    }
 
     // --- 实现接口 -----------------------------------------------------------------------------------------------------
     public Connection getConnection() throws SQLException

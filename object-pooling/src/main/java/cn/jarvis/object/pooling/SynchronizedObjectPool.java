@@ -256,7 +256,7 @@ public class SynchronizedObjectPool<T> implements ObjectPool<T>
         managedObjects.remove(item.originalObject());
         try
         {
-            objectFactory.destory(item);
+            objectFactory.destroy(item);
         }
         finally
         {
