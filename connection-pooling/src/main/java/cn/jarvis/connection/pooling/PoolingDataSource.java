@@ -1,7 +1,7 @@
 package cn.jarvis.connection.pooling;
 
 import cn.jarvis.object.pooling.ObjectPool;
-import cn.jarvis.object.pooling.PooledObjectFactory;
+import cn.jarvis.object.pooling.SynchronizedObjectPool;
 import cn.jarvis.object.pooling.config.SynchronizedObjectPoolConfig;
 
 import javax.sql.DataSource;
@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 
 /**
  * 池化数据源
+ *
  * @author zjnktion
  */
 public class PoolingDataSource implements DataSource
@@ -40,27 +41,27 @@ public class PoolingDataSource implements DataSource
     // --- 实现接口 -----------------------------------------------------------------------------------------------------
     public Connection getConnection() throws SQLException
     {
-//        try
-//        {
-//            PooledConnection pooledConnection = connectionPool.checkOut();
-//            if (pooledConnection == null)
-//            {
-//                return null;
-//            }
-//            return  pooledConnection.getOriginalConnection();
-//        }
-//        catch (SQLException e)
-//        {
-//            throw e;
-//        }
-//        catch (NoSuchElementException e)
-//        {
-//            throw new SQLException("Can not get a connection from pool.", e);
-//        }
-//        catch (Exception e)
-//        {
-//            throw new SQLException("Can not get a connection because unknown exception.", e);
-//        }
+        try
+        {
+            PooledConnection pooledConnection = acquirePool().checkOut();
+            if (pooledConnection == null)
+            {
+                return null;
+            }
+            return  pooledConnection.getOriginalConnection();
+        }
+        catch (SQLException e)
+        {
+            throw e;
+        }
+        catch (NoSuchElementException e)
+        {
+            throw new SQLException("Can not get a connection from pool.", e);
+        }
+        catch (Exception e)
+        {
+            throw new SQLException("Can not get a connection because unknown exception.", e);
+        }
     }
 
     public Connection getConnection(String username, String password) throws SQLException
@@ -122,19 +123,35 @@ public class PoolingDataSource implements DataSource
             {
                 connectionFactory = createConnectionFactory();
             }
+
+            connectionPool = createConnectionPool();
         }
+
+        return connectionPool;
     }
 
-    private PooledObjectFactory<PooledConnection> createConnectionFactory() throws SQLException
+    private PooledConnectionFactory createConnectionFactory() throws SQLException
     {
         try
         {
-            return new PooledConnectionFactory(driverClassName, )
+            return new PooledConnectionFactory(driverClassName, url, username, password, validateQuery, validateTimeout);
         }
         catch (Exception e)
         {
-            throw new SQLException("Create ConnectionFactory")
+            throw new SQLException("Create ConnectionFactory exception.", e);
         }
+    }
+
+    private ObjectPool<PooledConnection> createConnectionPool()
+    {
+        SynchronizedObjectPoolConfig config = new SynchronizedObjectPoolConfig();
+        config.setMaxTotal(maxTotal);
+        config.setBlockWhenResourceShortage(blockWhenResourceShortage);
+        config.setMaxBlockMillis(maxBlockMillis);
+        config.setRetryWhileCheckOutValidateFail(retryWhileCheckOutValidateFail);
+        config.setMaxIdleValidateMillis(maxIdleValidateMillis);
+
+        return new SynchronizedObjectPool<PooledConnection>(connectionFactory, config);
     }
 
     // --- 公开方法 -----------------------------------------------------------------------------------------------------
