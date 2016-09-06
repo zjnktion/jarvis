@@ -9,7 +9,9 @@ public interface ObjectPool<T>
 
     T checkOut() throws Exception;
 
-    void checkIn(T item);
+    void checkIn(T obj) throws Exception;
 
-    T create();
+    void create() throws Exception;
+
+    void destroy(T obj) throws Exception;
 }
