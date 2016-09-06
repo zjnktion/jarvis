@@ -12,7 +12,7 @@ public class TestFactory implements PooledObjectFactory<TestObject>
         return new DefaultPooledObject<TestObject>(new TestObject());
     }
 
-    public boolean validate(PooledObject<TestObject> item) throws Exception
+    public boolean validate(PooledObject<TestObject> item)
     {
         return true;
     }
