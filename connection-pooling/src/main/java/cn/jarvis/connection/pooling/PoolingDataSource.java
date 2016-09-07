@@ -48,7 +48,7 @@ public class PoolingDataSource implements DataSource
             {
                 return null;
             }
-            return  pooledConnection.getOriginalConnection();
+            return  pooledConnection;
         }
         catch (SQLException e)
         {
@@ -155,6 +155,18 @@ public class PoolingDataSource implements DataSource
     }
 
     // --- 公开方法 -----------------------------------------------------------------------------------------------------
+    public void releaseConnection(PooledConnection conn)
+    {
+        try
+        {
+            connectionPool.checkIn(conn);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     public int getMaxTotal()
     {
         return maxTotal;
