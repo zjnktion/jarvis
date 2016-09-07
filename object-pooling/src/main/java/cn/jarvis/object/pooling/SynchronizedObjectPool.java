@@ -174,7 +174,7 @@ public class SynchronizedObjectPool<T> implements ObjectPool<T>
 
         this.idleObjects[++this.index] = item;
 
-        this.notify();
+        this.notifyAll();
     }
 
     public synchronized void create() throws Exception
