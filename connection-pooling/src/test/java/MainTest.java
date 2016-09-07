@@ -15,8 +15,8 @@ public class MainTest
 
     static final PoolingDataSource PDS;
     static final String SQL = "select * from t_user";
-    static final int TNUM = 64;
-    static final int LNUM = 1000;
+    static final int TNUM = 1000;
+    static final int LNUM = 100;
     static long time;
 
     static final BasicDataSource BDS;
@@ -38,8 +38,8 @@ public class MainTest
 
     public static void main(String[] args)
     {
-        QueryThread qt = new QueryThread();
-//        QueryThread1 qt = new QueryThread1();
+//        QueryThread qt = new QueryThread();
+        QueryThread1 qt = new QueryThread1();
 
         Thread[] ts = new Thread[TNUM];
         for (int i = 0; i < TNUM; i++)

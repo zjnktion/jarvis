@@ -15,7 +15,7 @@ public class MainTest
     {
         TestThread tt = new TestThread();
 
-        int num = 1;
+        int num = 1000;
         Thread[] ts = new Thread[num];
         for (int i = 0; i < num; i++)
         {
@@ -34,7 +34,7 @@ public class MainTest
 
         public void run()
         {
-            for (int i = 0; i < 1; i++)
+            for (int i = 0; i < 10; i++)
             {
                 try
                 {
@@ -45,15 +45,8 @@ public class MainTest
 //                    pool2.checkIn(pool2.checkOut());
 
                     TestObject obj = pool1.checkOut();
+                    Thread.yield();
                     pool1.checkIn(obj);
-                    pool1.create();
-                    pool1.create();
-                    pool1.create();
-                    pool1.create();
-                    pool1.create();
-                    pool1.create();
-                    pool1.create();
-                    pool1.destroy(obj);
                 }
                 catch (Exception e)
                 {

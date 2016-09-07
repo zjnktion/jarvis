@@ -195,14 +195,9 @@ public class ReentrantLockObjectPool<T> implements ObjectPool<T>
                 throw new IllegalStateException("The object tried to check in not in a correct status.");
             }
 
-            int oldIndex = this.index;
             this.idleObjects[++this.index] = item;
 
-            if (oldIndex < 0)
-            {
-                resourceShortage.signal();
-            }
-
+            resourceShortage.signal();
         }
         finally
         {
