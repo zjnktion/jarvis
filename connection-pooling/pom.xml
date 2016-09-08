@@ -34,7 +34,7 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>6.0.3</version>
+            <version>5.1.39</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-dbcp2 -->
         <dependency>
@@ -54,7 +54,18 @@
             <artifactId>c3p0</artifactId>
             <version>0.9.2.1</version>
         </dependency>
-
+        <!-- https://mvnrepository.com/artifact/com.alibaba/druid -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+            <version>1.0.25</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP-java7</artifactId>
+            <version>2.4.8</version>
+        </dependency>
     </dependencies>
 
 </project>
